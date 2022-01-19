@@ -12,7 +12,7 @@ namespace FluentEmail.Liquid
 {
     public class LiquidRenderer : ITemplateRenderer
     {
-        private static readonly Func<IFluidTemplate> FluidTemplateFactory = () => new FluidViewTemplate();
+        private static readonly Func<FluidViewTemplate> FluidTemplateFactory = () => new FluidViewTemplate();
 
         private readonly IOptions<LiquidRendererOptions> _options;
 

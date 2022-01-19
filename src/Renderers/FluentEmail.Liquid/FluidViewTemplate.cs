@@ -1,5 +1,4 @@
 ﻿using FluentEmail.Liquid.Tags;
-
 using Fluid;
 
 namespace FluentEmail.Liquid

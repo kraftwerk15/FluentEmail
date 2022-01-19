@@ -7,8 +7,10 @@ using Microsoft.Identity.Client;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using PublicClientApplication = Microsoft.Graph.PublicClientApplication;
 
 namespace FluentEmail.Graph
 {
@@ -19,10 +21,11 @@ namespace FluentEmail.Graph
         private readonly string _graphSecret;
         private bool _saveSent;
 
-        private ClientCredentialProvider _authProvider;
+        private ClientCredentialProvider _clientAuthProvider;
+        private DelegateAuthenticationProvider _publicAuthProvider;
         private GraphServiceClient _graphClient;
         private IConfidentialClientApplication _clientApp;
-
+        
         public GraphSender(
             string GraphEmailAppId,
             string GraphEmailTenantId,
@@ -40,9 +43,38 @@ namespace FluentEmail.Graph
                 .WithClientSecret(_graphSecret)
                 .Build();
 
-            _authProvider = new ClientCredentialProvider(_clientApp);
+            _clientAuthProvider = new ClientCredentialProvider(_clientApp);
 
-            _graphClient = new GraphServiceClient(_authProvider);
+            _graphClient = new GraphServiceClient(_clientAuthProvider);
+        }
+        
+        public GraphSender(string appId, string tenantId, bool saveSentItems)
+        {
+            _appId = appId;
+            _tenantId = tenantId;
+            _saveSent = saveSentItems;
+
+            var pca = PublicClientApplicationBuilder
+                .Create(_appId)
+                .WithTenantId(_tenantId)
+                .Build();
+
+            // DelegateAuthenticationProvider is a simple auth provider implementation
+            // that allows you to define an async function to retrieve a token
+            // Alternatively, you can create a class that implements IAuthenticationProvider
+            // for more complex scenarios
+            Task.Run(() =>
+            {
+                _publicAuthProvider = new DelegateAuthenticationProvider(async (request) => {
+                    // Use Microsoft.Identity.Client to retrieve token
+                    var result = await new MSALNET.Token().Get();
+
+                    request.Headers.Authorization =
+                        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", result.AccessToken);
+                });
+            }).Wait();
+            
+            _graphClient = new GraphServiceClient(_publicAuthProvider);
         }
 
         public SendResponse Send(IFluentEmail email, CancellationToken? token = null)
